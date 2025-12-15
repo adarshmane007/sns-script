@@ -51,13 +51,6 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config" {
         AutoScalingGroupName = "$${aws:AutoScalingGroupName}"
       }
     }
-    logs = {
-      logs_collected = {
-        files = {
-          collect_list = []
-        }
-      }
-    }
   })
 
   tags = {
