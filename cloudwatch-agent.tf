@@ -78,7 +78,7 @@ resource "aws_ssm_association" "cloudwatch_agent" {
   }
 
   parameters = {
-    action                        = "configure"
+    action                        = "install"
     mode                          = "ec2"
     optionalConfigurationSource    = "ssm"
     optionalConfigurationLocation = aws_ssm_parameter.cloudwatch_agent_config.name
@@ -87,6 +87,37 @@ resource "aws_ssm_association" "cloudwatch_agent" {
 
   depends_on = [
     aws_ssm_parameter.cloudwatch_agent_config,
+    null_resource.attach_iam_instance_profile
+  ]
+}
+
+# Trigger SSM Association execution after IAM role is attached
+# This ensures the association runs with proper IAM permissions
+resource "null_resource" "trigger_ssm_association" {
+  triggers = {
+    association_id = aws_ssm_association.cloudwatch_agent.id
+    instance_id    = var.instance_id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      
+      echo "Waiting for IAM role to propagate (30 seconds)..."
+      sleep 30
+      
+      echo "Triggering SSM Association execution..."
+      aws ssm start-associations-once \
+        --association-ids ${aws_ssm_association.cloudwatch_agent.id} \
+        --region ${var.aws_region} || echo "Association may already be running or will execute automatically"
+      
+      echo "SSM Association triggered. CloudWatch Agent installation will begin shortly."
+      echo "Monitor progress with: aws ssm describe-association-executions --association-id ${aws_ssm_association.cloudwatch_agent.id} --region ${var.aws_region}"
+    EOT
+  }
+
+  depends_on = [
+    aws_ssm_association.cloudwatch_agent,
     null_resource.attach_iam_instance_profile
   ]
 }
