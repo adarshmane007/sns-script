@@ -22,3 +22,23 @@ output "alarm_names" {
   }
 }
 
+output "cloudwatch_agent_config_parameter" {
+  description = "SSM Parameter name for CloudWatch Agent configuration"
+  value       = aws_ssm_parameter.cloudwatch_agent_config.name
+}
+
+output "cloudwatch_agent_ssm_association_id" {
+  description = "SSM Association ID for CloudWatch Agent installation"
+  value       = aws_ssm_association.cloudwatch_agent.id
+}
+
+output "iam_role_arn" {
+  description = "ARN of the IAM role attached to EC2 instance"
+  value       = aws_iam_role.ec2_cloudwatch_role.arn
+}
+
+output "iam_instance_profile_name" {
+  description = "Name of the IAM instance profile attached to EC2 instance"
+  value       = aws_iam_instance_profile.ec2_cloudwatch_profile.name
+}
+
