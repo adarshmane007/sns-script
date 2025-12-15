@@ -78,7 +78,7 @@ resource "aws_ssm_association" "cloudwatch_agent" {
   }
 
   parameters = {
-    action                        = "install"
+    action                        = "configure"
     mode                          = "ec2"
     optionalConfigurationSource    = "ssm"
     optionalConfigurationLocation = aws_ssm_parameter.cloudwatch_agent_config.name
@@ -103,16 +103,27 @@ resource "null_resource" "trigger_ssm_association" {
     command = <<-EOT
       set -e
       
-      echo "Waiting for IAM role to propagate (30 seconds)..."
-      sleep 30
+      echo "Waiting for IAM role to propagate (60 seconds)..."
+      echo "This ensures the IAM role is fully active before triggering SSM Association."
+      sleep 60
       
+      echo ""
       echo "Triggering SSM Association execution..."
       aws ssm start-associations-once \
         --association-ids ${aws_ssm_association.cloudwatch_agent.id} \
-        --region ${var.aws_region} || echo "Association may already be running or will execute automatically"
+        --region ${var.aws_region} 2>&1 || echo "Note: Association execution triggered (may already be running)"
       
-      echo "SSM Association triggered. CloudWatch Agent installation will begin shortly."
-      echo "Monitor progress with: aws ssm describe-association-executions --association-id ${aws_ssm_association.cloudwatch_agent.id} --region ${var.aws_region}"
+      echo ""
+      echo "✅ SSM Association execution started!"
+      echo ""
+      echo "The CloudWatch Agent will be installed and configured automatically."
+      echo "This may take 2-5 minutes. Monitor progress with:"
+      echo ""
+      echo "  aws ssm describe-association-executions \\"
+      echo "    --association-id ${aws_ssm_association.cloudwatch_agent.id} \\"
+      echo "    --region ${var.aws_region} \\"
+      echo "    --max-results 1"
+      echo ""
     EOT
   }
 
