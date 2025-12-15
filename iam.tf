@@ -54,8 +54,8 @@ resource "aws_iam_instance_profile" "ec2_cloudwatch_profile" {
 # Requires AWS CLI to be installed where Terraform runs
 resource "null_resource" "attach_iam_instance_profile" {
   triggers = {
-    instance_id           = var.instance_id
-    instance_profile_name = aws_iam_instance_profile.ec2_cloudwatch_profile.name
+    instance_id     = var.instance_id
+    instance_profile_arn = aws_iam_instance_profile.ec2_cloudwatch_profile.arn
   }
 
   provisioner "local-exec" {
@@ -79,11 +79,15 @@ resource "null_resource" "attach_iam_instance_profile" {
         sleep 3
       fi
       
-      # Associate the new IAM instance profile
-      echo "Associating IAM instance profile: ${aws_iam_instance_profile.ec2_cloudwatch_profile.name}"
+      # Wait a moment for IAM instance profile to be fully available
+      echo "Waiting for IAM instance profile to be available..."
+      sleep 2
+      
+      # Associate the new IAM instance profile using ARN
+      echo "Associating IAM instance profile: ${aws_iam_instance_profile.ec2_cloudwatch_profile.arn}"
       aws ec2 associate-iam-instance-profile \
         --instance-id ${var.instance_id} \
-        --iam-instance-profile Name=${aws_iam_instance_profile.ec2_cloudwatch_profile.name} \
+        --iam-instance-profile Arn=${aws_iam_instance_profile.ec2_cloudwatch_profile.arn} \
         --region ${var.aws_region}
       
       echo "IAM instance profile successfully attached!"
