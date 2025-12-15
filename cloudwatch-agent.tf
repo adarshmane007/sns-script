@@ -172,12 +172,12 @@ resource "aws_ssm_association" "cloudwatch_agent" {
   ]
 }
 
-# Trigger SSM Association execution after installation completes
-# This ensures the agent is installed before configuration runs
-resource "null_resource" "trigger_ssm_association" {
+# Configure CloudWatch Agent directly via SSM Run Command
+# This is more reliable than SSM Association for configuration
+resource "null_resource" "configure_cloudwatch_agent" {
   triggers = {
-    association_id = aws_ssm_association.cloudwatch_agent.id
-    instance_id    = var.instance_id
+    instance_id     = var.instance_id
+    config_param    = aws_ssm_parameter.cloudwatch_agent_config.name
     install_complete = null_resource.install_cloudwatch_agent.id
   }
 
@@ -190,27 +190,78 @@ resource "null_resource" "trigger_ssm_association" {
       sleep 10
       
       echo ""
-      echo "Triggering SSM Association execution to configure CloudWatch Agent..."
-      aws ssm start-associations-once \
-        --association-ids ${aws_ssm_association.cloudwatch_agent.id} \
-        --region ${var.aws_region} 2>&1 || echo "Note: Association execution triggered (may already be running)"
+      echo "Configuring CloudWatch Agent on instance ${var.instance_id}..."
       
-      echo ""
-      echo "✅ SSM Association execution started!"
-      echo ""
-      echo "CloudWatch Agent configuration will begin shortly."
-      echo "Monitor progress with:"
-      echo ""
-      echo "  aws ssm describe-association-executions \\"
-      echo "    --association-id ${aws_ssm_association.cloudwatch_agent.id} \\"
-      echo "    --region ${var.aws_region} \\"
-      echo "    --max-results 1"
-      echo ""
+      # Create configuration command (single line for SSM)
+      CONFIG_SCRIPT="aws ssm get-parameter --name '${aws_ssm_parameter.cloudwatch_agent_config.name}' --region ${var.aws_region} --query 'Parameter.Value' --output text > /tmp/amazon-cloudwatch-agent.json && sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/tmp/amazon-cloudwatch-agent.json -s && sudo systemctl status amazon-cloudwatch-agent --no-pager | head -5 || echo 'Configuration completed'"
+      
+      # Send configuration command via SSM
+      COMMAND_ID=$(aws ssm send-command \
+        --instance-ids "${var.instance_id}" \
+        --document-name "AWS-RunShellScript" \
+        --parameters "commands=[\"$CONFIG_SCRIPT\"]" \
+        --region ${var.aws_region} \
+        --output text \
+        --query 'Command.CommandId')
+      
+      echo "Command ID: $COMMAND_ID"
+      echo "Waiting for configuration to complete (this may take 1-2 minutes)..."
+      
+      # Wait for command to complete
+      for i in {1..20}; do
+        STATUS=$(aws ssm get-command-invocation \
+          --command-id "$COMMAND_ID" \
+          --instance-id "${var.instance_id}" \
+          --region ${var.aws_region} \
+          --query 'Status' \
+          --output text 2>/dev/null || echo "InProgress")
+        
+        if [ "$STATUS" == "Success" ]; then
+          echo ""
+          echo "✅ CloudWatch Agent configured successfully!"
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${var.instance_id}" \
+            --region ${var.aws_region} \
+            --query 'StandardOutputContent' \
+            --output text
+          break
+        elif [ "$STATUS" == "Failed" ]; then
+          echo ""
+          echo "❌ Configuration failed!"
+          echo "Standard Output:"
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${var.instance_id}" \
+            --region ${var.aws_region} \
+            --query 'StandardOutputContent' \
+            --output text
+          echo ""
+          echo "Standard Error:"
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${var.instance_id}" \
+            --region ${var.aws_region} \
+            --query 'StandardErrorContent' \
+            --output text
+          exit 1
+        else
+          echo -n "."
+          sleep 6
+        fi
+      done
+      
+      if [ "$STATUS" != "Success" ]; then
+        echo ""
+        echo "⚠️  Configuration timed out. Status: $STATUS"
+        echo "Check command status manually:"
+        echo "  aws ssm get-command-invocation --command-id $COMMAND_ID --instance-id ${var.instance_id} --region ${var.aws_region}"
+      fi
     EOT
   }
 
   depends_on = [
-    aws_ssm_association.cloudwatch_agent,
+    aws_ssm_parameter.cloudwatch_agent_config,
     null_resource.install_cloudwatch_agent
   ]
 }
