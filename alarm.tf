@@ -25,12 +25,16 @@ resource "aws_cloudwatch_metric_alarm" "disk_usage" {
   alarm_description   = "This metric monitors disk usage for ${each.value.name}"
   alarm_actions       = [aws_sns_topic.ec2_monitoring_alerts.arn]
 
-  # CloudWatch Agent sends disk metrics with InstanceId, path, and device dimensions
+  # CloudWatch Agent sends disk metrics with InstanceId, path, device, fstype, ImageId, and InstanceType dimensions
   # All dimensions must match exactly for the alarm to work
+  # Using data source to get ImageId and InstanceType dynamically
   dimensions = {
     InstanceId = each.value.instance_id
     path       = "/"
-    device     = try(each.value.device, "nvme0n1p1")  # Default to nvme0n1p1 if not specified
+    device     = try(each.value.device, "nvme0n1p1") # Default to nvme0n1p1 if not specified
+    fstype     = "xfs" # File system type - adjust if your instance uses a different filesystem
+    ImageId    = data.aws_instance.monitored_instance.ami
+    InstanceType = data.aws_instance.monitored_instance.instance_type
   }
 
   tags = {
@@ -56,8 +60,12 @@ resource "aws_cloudwatch_metric_alarm" "memory_usage" {
   alarm_actions       = [aws_sns_topic.ec2_monitoring_alerts.arn]
 
   # CloudWatch Agent sends memory metrics with InstanceId, ImageId, and InstanceType dimensions
+  # All dimensions must match exactly for the alarm to work
+  # Using data source to get ImageId and InstanceType dynamically
   dimensions = {
     InstanceId = each.value.instance_id
+    ImageId    = data.aws_instance.monitored_instance.ami
+    InstanceType = data.aws_instance.monitored_instance.instance_type
   }
 
   tags = {

@@ -22,7 +22,11 @@
         ],
         "metrics_collection_interval": 60,
         "resources": [
-          "*"
+          "/"                
+        ],
+        "ignore_fs": [
+          "tmpfs",          
+          "devtmpfs"
         ]
       },
       "diskio": {
@@ -31,7 +35,7 @@
         ],
         "metrics_collection_interval": 60,
         "resources": [
-          "*"
+          "*"                
         ]
       },
       "mem": {
@@ -75,4 +79,3 @@
     }
   }
 }
-

@@ -16,8 +16,8 @@ output "email_subscription_status" {
 output "alarm_names" {
   description = "Names of all created CloudWatch alarms"
   value = {
-    disk_usage_alarms    = { for k, v in aws_cloudwatch_metric_alarm.disk_usage : k => v.alarm_name }
-    memory_usage_alarms   = { for k, v in aws_cloudwatch_metric_alarm.memory_usage : k => v.alarm_name }
+    disk_usage_alarms      = { for k, v in aws_cloudwatch_metric_alarm.disk_usage : k => v.alarm_name }
+    memory_usage_alarms    = { for k, v in aws_cloudwatch_metric_alarm.memory_usage : k => v.alarm_name }
     cpu_utilization_alarms = { for k, v in aws_cloudwatch_metric_alarm.cpu_utilization : k => v.alarm_name }
   }
 }
@@ -29,7 +29,7 @@ output "cloudwatch_agent_config_parameter" {
 
 output "cloudwatch_agent_installation_complete" {
   description = "CloudWatch Agent installation resource ID"
-  value       = null_resource.install_cloudwatch_agent.id
+  value       = null_resource.install_cloudwatch_agent_v3.id
 }
 
 output "iam_role_arn" {

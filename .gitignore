@@ -1,0 +1,38 @@
+# Terraform state files - NEVER commit these!
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform crash log files
+crash.log
+crash.*.log
+
+# Terraform override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform directory (contains provider plugins)
+.terraform/
+.terraform.lock.hcl
+
+# CLI configuration files (may contain sensitive data)
+.terraformrc
+terraform.rc
+
+# Environment variables
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
