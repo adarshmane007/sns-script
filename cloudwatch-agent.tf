@@ -146,32 +146,6 @@ resource "null_resource" "install_cloudwatch_agent" {
   ]
 }
 
-# SSM Association to configure CloudWatch Agent
-# Uses AWS-managed SSM document: AmazonCloudWatch-ManageAgent
-# This runs AFTER installation
-resource "aws_ssm_association" "cloudwatch_agent" {
-  name = "AmazonCloudWatch-ManageAgent"
-
-  targets {
-    key    = "InstanceIds"
-    values = [var.instance_id]
-  }
-
-  parameters = {
-    action                        = "configure"
-    mode                          = "ec2"
-    optionalConfigurationSource    = "ssm"
-    optionalConfigurationLocation = aws_ssm_parameter.cloudwatch_agent_config.name
-    optionalRestart               = "yes"
-  }
-
-  depends_on = [
-    aws_ssm_parameter.cloudwatch_agent_config,
-    null_resource.attach_iam_instance_profile,
-    null_resource.install_cloudwatch_agent
-  ]
-}
-
 # Configure CloudWatch Agent directly via SSM Run Command
 # This is more reliable than SSM Association for configuration
 resource "null_resource" "configure_cloudwatch_agent" {
@@ -192,8 +166,13 @@ resource "null_resource" "configure_cloudwatch_agent" {
       echo ""
       echo "Configuring CloudWatch Agent on instance ${var.instance_id}..."
       
-      # Create configuration command (single line for SSM)
-      CONFIG_SCRIPT="aws ssm get-parameter --name '${aws_ssm_parameter.cloudwatch_agent_config.name}' --region ${var.aws_region} --query 'Parameter.Value' --output text > /tmp/amazon-cloudwatch-agent.json && sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/tmp/amazon-cloudwatch-agent.json -s && sudo systemctl status amazon-cloudwatch-agent --no-pager | head -5 || echo 'Configuration completed'"
+      # Create configuration and startup commands
+      # Step 1: Download config from SSM Parameter
+      # Step 2: Configure the agent
+      # Step 3: Explicitly start the service
+      # Step 4: Enable the service for auto-start
+      # Step 5: Verify it's running
+      CONFIG_SCRIPT="aws ssm get-parameter --name '${aws_ssm_parameter.cloudwatch_agent_config.name}' --region ${var.aws_region} --query 'Parameter.Value' --output text > /tmp/amazon-cloudwatch-agent.json && sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/tmp/amazon-cloudwatch-agent.json && sudo systemctl start amazon-cloudwatch-agent && sudo systemctl enable amazon-cloudwatch-agent && sleep 3 && sudo systemctl is-active amazon-cloudwatch-agent && echo 'CloudWatch Agent is running'"
       
       # Send configuration command via SSM
       COMMAND_ID=$(aws ssm send-command \
@@ -218,13 +197,37 @@ resource "null_resource" "configure_cloudwatch_agent" {
         
         if [ "$STATUS" == "Success" ]; then
           echo ""
-          echo "✅ CloudWatch Agent configured successfully!"
+          echo "✅ CloudWatch Agent configured and started successfully!"
+          echo ""
+          echo "Output:"
           aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
             --instance-id "${var.instance_id}" \
             --region ${var.aws_region} \
             --query 'StandardOutputContent' \
             --output text
+          echo ""
+          echo "Verifying agent status..."
+          # Verify agent is actually running
+          VERIFY_CMD=$(aws ssm send-command \
+            --instance-ids "${var.instance_id}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["sudo systemctl is-active amazon-cloudwatch-agent && sudo systemctl is-enabled amazon-cloudwatch-agent && ls -la /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log 2>/dev/null && echo \"Log file exists\" || echo \"Log file will be created when agent starts\""]' \
+            --region ${var.aws_region} \
+            --output text \
+            --query 'Command.CommandId')
+          
+          sleep 5
+          VERIFY_OUTPUT=$(aws ssm get-command-invocation \
+            --command-id "$VERIFY_CMD" \
+            --instance-id "${var.instance_id}" \
+            --region ${var.aws_region} \
+            --query 'StandardOutputContent' \
+            --output text 2>/dev/null || echo "")
+          
+          if [ ! -z "$VERIFY_OUTPUT" ]; then
+            echo "$VERIFY_OUTPUT"
+          fi
           break
         elif [ "$STATUS" == "Failed" ]; then
           echo ""

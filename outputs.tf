@@ -27,9 +27,9 @@ output "cloudwatch_agent_config_parameter" {
   value       = aws_ssm_parameter.cloudwatch_agent_config.name
 }
 
-output "cloudwatch_agent_ssm_association_id" {
-  description = "SSM Association ID for CloudWatch Agent installation"
-  value       = aws_ssm_association.cloudwatch_agent.id
+output "cloudwatch_agent_installation_complete" {
+  description = "CloudWatch Agent installation resource ID"
+  value       = null_resource.install_cloudwatch_agent.id
 }
 
 output "iam_role_arn" {
@@ -40,5 +40,10 @@ output "iam_role_arn" {
 output "iam_instance_profile_name" {
   description = "Name of the IAM instance profile attached to EC2 instance"
   value       = aws_iam_instance_profile.ec2_cloudwatch_profile.name
+}
+
+output "cloudwatch_agent_status" {
+  description = "CloudWatch Agent installation and configuration status"
+  value       = "Installed and configured. Check target server with: sudo systemctl status amazon-cloudwatch-agent"
 }
 
