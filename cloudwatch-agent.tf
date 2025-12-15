@@ -150,9 +150,10 @@ resource "null_resource" "install_cloudwatch_agent" {
 # This is more reliable than SSM Association for configuration
 resource "null_resource" "configure_cloudwatch_agent" {
   triggers = {
-    instance_id     = var.instance_id
-    config_param    = aws_ssm_parameter.cloudwatch_agent_config.name
-    install_complete = null_resource.install_cloudwatch_agent.id
+    instance_id      = var.instance_id
+    config_param     = aws_ssm_parameter.cloudwatch_agent_config.name
+    install_complete  = null_resource.install_cloudwatch_agent.id
+    version          = "2.0"  # Force recreation with new start/enable commands
   }
 
   provisioner "local-exec" {
