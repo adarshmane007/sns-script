@@ -87,7 +87,7 @@ resource "aws_ssm_association" "cloudwatch_agent" {
 
   depends_on = [
     aws_ssm_parameter.cloudwatch_agent_config,
-    aws_ec2_instance_iam_instance_profile_association.ec2_cloudwatch_association
+    null_resource.attach_iam_instance_profile
   ]
 }
 

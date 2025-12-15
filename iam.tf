@@ -48,9 +48,51 @@ resource "aws_iam_instance_profile" "ec2_cloudwatch_profile" {
   }
 }
 
-# Associate IAM Instance Profile with existing EC2 Instance
-resource "aws_ec2_instance_iam_instance_profile_association" "ec2_cloudwatch_association" {
-  instance_id    = var.instance_id
-  iam_instance_profile_id = aws_iam_instance_profile.ec2_cloudwatch_profile.id
+# Associate IAM Instance Profile with existing EC2 Instance using AWS CLI
+# Note: This uses null_resource because aws_ec2_instance_iam_instance_profile_association
+# may not be available in all AWS provider versions
+# Requires AWS CLI to be installed where Terraform runs
+resource "null_resource" "attach_iam_instance_profile" {
+  triggers = {
+    instance_id           = var.instance_id
+    instance_profile_name = aws_iam_instance_profile.ec2_cloudwatch_profile.name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      
+      # Check if instance already has an IAM instance profile association
+      ASSOCIATION_ID=$(aws ec2 describe-iam-instance-profile-associations \
+        --filters "Name=instance-id,Values=${var.instance_id}" \
+        --region ${var.aws_region} \
+        --query 'IamInstanceProfileAssociations[0].AssociationId' \
+        --output text 2>/dev/null || echo "None")
+      
+      # If instance already has a profile, disassociate it first
+      if [ "$ASSOCIATION_ID" != "None" ] && [ ! -z "$ASSOCIATION_ID" ]; then
+        echo "Disassociating existing IAM instance profile (Association ID: $ASSOCIATION_ID)..."
+        aws ec2 disassociate-iam-instance-profile \
+          --association-id "$ASSOCIATION_ID" \
+          --region ${var.aws_region} || true
+        echo "Waiting for disassociation to complete..."
+        sleep 3
+      fi
+      
+      # Associate the new IAM instance profile
+      echo "Associating IAM instance profile: ${aws_iam_instance_profile.ec2_cloudwatch_profile.name}"
+      aws ec2 associate-iam-instance-profile \
+        --instance-id ${var.instance_id} \
+        --iam-instance-profile Name=${aws_iam_instance_profile.ec2_cloudwatch_profile.name} \
+        --region ${var.aws_region}
+      
+      echo "IAM instance profile successfully attached!"
+    EOT
+  }
+
+  depends_on = [
+    aws_iam_instance_profile.ec2_cloudwatch_profile,
+    aws_iam_role.ec2_cloudwatch_role
+  ]
 }
 
