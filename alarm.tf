@@ -33,8 +33,8 @@ resource "aws_cloudwatch_metric_alarm" "disk_usage" {
     path       = "/"
     device     = try(each.value.device, "nvme0n1p1") # Default to nvme0n1p1 if not specified
     fstype     = "xfs" # File system type - adjust if your instance uses a different filesystem
-    ImageId    = data.aws_instance.monitored_instance.ami
-    InstanceType = data.aws_instance.monitored_instance.instance_type
+    ImageId    = each.value.ami
+    InstanceType = each.value.instance_type
   }
 
   tags = {
@@ -64,8 +64,8 @@ resource "aws_cloudwatch_metric_alarm" "memory_usage" {
   # Using data source to get ImageId and InstanceType dynamically
   dimensions = {
     InstanceId = each.value.instance_id
-    ImageId    = data.aws_instance.monitored_instance.ami
-    InstanceType = data.aws_instance.monitored_instance.instance_type
+    ImageId    = each.value.ami
+    InstanceType = each.value.instance_type
   }
 
   tags = {
