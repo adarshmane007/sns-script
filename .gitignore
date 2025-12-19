@@ -3,6 +3,9 @@
 *.tfstate.*
 *.tfstate.backup
 
+# Terraform state backups directory
+terraform-state-backups/
+
 # Terraform crash log files
 crash.log
 crash.*.log

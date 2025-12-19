@@ -29,11 +29,11 @@ resource "aws_cloudwatch_metric_alarm" "disk_usage" {
   # All dimensions must match exactly for the alarm to work
   # Using data source to get ImageId and InstanceType dynamically
   dimensions = {
-    InstanceId = each.value.instance_id
-    path       = "/"
-    device     = try(each.value.device, "nvme0n1p1") # Default to nvme0n1p1 if not specified
-    fstype     = "xfs" # File system type - adjust if your instance uses a different filesystem
-    ImageId    = each.value.ami
+    InstanceId   = each.value.instance_id
+    path         = "/"
+    device       = try(each.value.device, "nvme0n1p1") # Default to nvme0n1p1 if not specified
+    fstype       = "xfs"                               # File system type - adjust if your instance uses a different filesystem
+    ImageId      = each.value.ami
     InstanceType = each.value.instance_type
   }
 
@@ -63,8 +63,8 @@ resource "aws_cloudwatch_metric_alarm" "memory_usage" {
   # All dimensions must match exactly for the alarm to work
   # Using data source to get ImageId and InstanceType dynamically
   dimensions = {
-    InstanceId = each.value.instance_id
-    ImageId    = each.value.ami
+    InstanceId   = each.value.instance_id
+    ImageId      = each.value.ami
     InstanceType = each.value.instance_type
   }
 

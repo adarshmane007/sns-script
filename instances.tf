@@ -23,12 +23,12 @@ data "aws_instances" "tagged_instances" {
     for idx, inst in local.instances_to_monitor : inst.name => inst
     if inst.instance_id == "" && inst.tag_key != "" && inst.tag_value != ""
   }
-  
+
   filter {
     name   = "tag:${each.value.tag_key}"
     values = [each.value.tag_value]
   }
-  
+
   filter {
     name   = "instance-state-name"
     values = ["running", "stopped"]
@@ -60,7 +60,7 @@ data "aws_instance" "instances" {
     for name, instance_id in local.resolved_instance_ids : name => instance_id
     if instance_id != ""
   }
-  
+
   instance_id = each.value
 }
 
@@ -75,10 +75,16 @@ locals {
       instance_type = instance_data.instance_type
     }
   }
-  
+
   # Backward compatibility: single instance references
   monitored_instance_id   = length(local.ec2_instances_map) > 0 ? values(local.ec2_instances_map)[0].instance_id : ""
-  monitored_instance_ami = length(local.ec2_instances_map) > 0 ? values(local.ec2_instances_map)[0].ami : ""
+  monitored_instance_ami  = length(local.ec2_instances_map) > 0 ? values(local.ec2_instances_map)[0].ami : ""
   monitored_instance_type = length(local.ec2_instances_map) > 0 ? values(local.ec2_instances_map)[0].instance_type : ""
+
+  # Validation: Check if all configured instances were found
+  missing_instances = [
+    for inst in local.instances_to_monitor : inst.name
+    if !contains(keys(local.ec2_instances_map), inst.name)
+  ]
 }
 

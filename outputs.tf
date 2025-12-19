@@ -55,6 +55,20 @@ output "monitored_instances" {
   }
 }
 
+# Validation output - will fail if instances are not found
+output "validation_check" {
+  description = "Validation check - fails if configured instances are not found"
+  value = length(local.missing_instances) > 0 ? (
+    "ERROR: The following instances were not found: ${join(", ", local.missing_instances)}. Please verify tag keys/values in terraform.tfvars match exactly (case-sensitive, no extra spaces). Instances must exist in account and be in 'running' or 'stopped' state."
+  ) : "All configured instances found successfully"
+
+  # This will cause Terraform to fail during apply if instances are missing
+  precondition {
+    condition     = length(local.missing_instances) == 0
+    error_message = "ERROR: The following instances were not found: ${join(", ", local.missing_instances)}. Please verify:\n1. Instances exist in AWS account\n2. Instances are in region: ${var.aws_region}\n3. Tag keys and values in terraform.tfvars match exactly (case-sensitive, no extra spaces)\n4. Instances are in 'running' or 'stopped' state"
+  }
+}
+
 output "cloudwatch_agent_status" {
   description = "CloudWatch Agent installation and configuration status"
   value       = "Installed and configured for all instances. Check target servers with: sudo systemctl status amazon-cloudwatch-agent"

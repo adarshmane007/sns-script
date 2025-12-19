@@ -32,10 +32,32 @@ resource "aws_iam_role_policy_attachment" "cloudwatch_agent_server_policy" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
+# IAM policy for EC2 Instance Connect API
+# Uses AWS managed EC2 Instance Connect service - AWS handles all key lifecycle
+# We only use the API, no local key generation or management
+resource "aws_iam_role_policy" "ec2_instance_connect" {
+  name = "ec2-instance-connect-policy-${var.environment}"
+  role = aws_iam_role.ec2_cloudwatch_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2-instance-connect:SendSSHPublicKey",
+          "ec2:DescribeInstances"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # Per-instance IAM instance profiles
 resource "aws_iam_instance_profile" "ec2_cloudwatch_profile" {
   for_each = local.ec2_instances_map
-  
+
   name = "${each.value.name}-cloudwatch-profile"
   role = aws_iam_role.ec2_cloudwatch_role.name
 
@@ -49,7 +71,7 @@ resource "aws_iam_instance_profile" "ec2_cloudwatch_profile" {
 # Attach IAM instance profile to each EC2 instance
 resource "null_resource" "attach_iam_instance_profile" {
   for_each = local.ec2_instances_map
-  
+
   triggers = {
     instance_id          = each.value.instance_id
     instance_profile_arn = aws_iam_instance_profile.ec2_cloudwatch_profile[each.key].arn
@@ -57,7 +79,7 @@ resource "null_resource" "attach_iam_instance_profile" {
 
   provisioner "local-exec" {
     interpreter = ["C:\\Program Files\\Git\\bin\\bash.exe", "-c"]
-    command = <<-EOT
+    command     = <<-EOT
       set -e
       
       # Check if instance already has an IAM instance profile association

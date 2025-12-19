@@ -45,10 +45,10 @@ variable "device_name" {
 variable "instances" {
   description = "List of EC2 instances to monitor. Each instance can be identified by tag or instance_id"
   type = list(object({
-    name        = string                    # Unique name identifier for this instance
-    tag_key     = optional(string, "")      # Tag key to find instance (e.g., "Name")
-    tag_value   = optional(string, "")      # Tag value to find instance (e.g., "redis-server-1")
-    instance_id = optional(string, "")      # Direct instance ID (alternative to tags)
+    name        = string                        # Unique name identifier for this instance
+    tag_key     = optional(string, "")          # Tag key to find instance (e.g., "Name")
+    tag_value   = optional(string, "")          # Tag value to find instance (e.g., "redis-server-1")
+    instance_id = optional(string, "")          # Direct instance ID (alternative to tags)
     device      = optional(string, "nvme0n1p1") # Device name for disk metrics
   }))
   default = []
