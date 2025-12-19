@@ -39,6 +39,12 @@ instances = [
     tag_key   = "Name"
     tag_value = "Deploy"
     device    = "nvme0n1p1"
+  },
+  {
+    name      = "dashboard"
+    tag_key   = "Name"
+    tag_value = "dashboard"
+    device    = "nvme0n1p1"
   }
 
 ]
@@ -49,3 +55,4 @@ instances = [
 # instance_name          = "monitored-instance"
 # device_name            = "nvme0n1p1"
 
+   

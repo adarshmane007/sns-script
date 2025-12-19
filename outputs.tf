@@ -74,3 +74,14 @@ output "cloudwatch_agent_status" {
   value       = "Installed and configured for all instances. Check target servers with: sudo systemctl status amazon-cloudwatch-agent"
 }
 
+output "cloudwatch_dashboard" {
+  description = "CloudWatch Dashboard details"
+  value = {
+    dashboard_name = aws_cloudwatch_dashboard.ec2_monitoring_dashboard_v4.dashboard_name
+    dashboard_arn  = aws_cloudwatch_dashboard.ec2_monitoring_dashboard_v4.dashboard_arn
+    url            = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.ec2_monitoring_dashboard_v4.dashboard_name}"
+
+  }
+}
+
+
