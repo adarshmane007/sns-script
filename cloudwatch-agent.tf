@@ -64,7 +64,7 @@ resource "null_resource" "install_ssm_agent" {
       echo "SSM Agent automatically checks for new credentials every 1-2 minutes."
       echo "This may take up to 3 minutes after IAM profile attachment..."
       
-      MAX_WAIT=900  # 15 minutes total (allows for multiple credential refresh cycles and IAM propagation)
+      MAX_WAIT=900  # 20 minutes total (allows for multiple credential refresh cycles and IAM propagation)
       ELAPSED=0
       INTERVAL=15   # Check every 15 seconds
       SSM_STATUS=""
